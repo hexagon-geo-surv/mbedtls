@@ -653,7 +653,13 @@ union mbedtls_ssl_premaster_secret {
     unsigned char dummy; /* Make the union non-empty even with SSL disabled */
 #if defined(MBEDTLS_KEY_EXCHANGE_ECDHE_RSA_ENABLED)    || \
     defined(MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED)
-    unsigned char _pms_ecdh[MBEDTLS_ECP_MAX_BYTES];    /* RFC 4492 5.10 */
+    /* Leica/Catfish: on a pure PSA-client build (crypto in TF-M, no builtin
+     * ECP) MBEDTLS_ECP_LIGHT is undefined, so mbedtls/private/ecp.h sets
+     * MBEDTLS_ECP_MAX_BYTES = 1 and this ECDH premaster would be a single byte;
+     * psa_raw_key_agreement() then fails with PSA_ERROR_BUFFER_TOO_SMALL for the
+     * negotiated shared secret (e.g. 32 B for secp256r1). Size it from the PSA
+     * maximum curve so the buffer fits any negotiated ECDH secret. */
+    unsigned char _pms_ecdh[PSA_BITS_TO_BYTES(PSA_VENDOR_ECC_MAX_CURVE_BITS)]; /* RFC 4492 5.10 */
 #endif
 #if defined(MBEDTLS_KEY_EXCHANGE_PSK_ENABLED)
     unsigned char _pms_psk[4 + 2 * MBEDTLS_PSK_MAX_LEN];       /* RFC 4279 2 */
